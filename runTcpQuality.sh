@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# Zstatic CDN 节点 TCP 丢包探测脚本
-# 用法: bash <(curl -sL https://raw.githubusercontent.com/zhangzjjjjjj/nping-cdn-test/main/nping_tui.sh)
+# TcpQuality 节点 TCP 丢包探测脚本
+# 用法: bash <(curl -sL https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh)
 #
 # 每节点发送 10 个裸 TCP SYN 包，无内核重传
 # TUI 风格实时展示省份/运营商丢包率
@@ -148,10 +148,10 @@ trap "rm -rf $RESULT_DIR" EXIT
 # ===================== 参数与帮助 =====================
 show_help() {
   cat <<EOF
-Zstatic CDN 节点 TCP 丢包探测脚本
+TcpQuality 节点 TCP 丢包探测脚本
 
 用法:
-  bash <(curl -sL https://raw.githubusercontent.com/zhangzjjjjjj/nping-cdn-test/main/nping_tui.sh) [选项]
+  bash <(curl -sL https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh) [选项]
 
 选项:
   -h, --help        显示帮助信息并退出
@@ -159,10 +159,10 @@ Zstatic CDN 节点 TCP 丢包探测脚本
   --count=NUM       同上，设置每节点发包数
 
 示例:
-  bash <(curl -sL https://raw.githubusercontent.com/zhangzjjjjjj/nping-cdn-test/main/nping_tui.sh) -c 100
+  bash <(curl -sL https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh) -c 100
 
 默认行为:
-  - 节点范围: 全国 Zstatic CDN IPv4 节点，共 ${TOTAL} 个省份/运营商组合
+  - 节点范围: 全国 TcpQuality IPv4 节点，共 ${TOTAL} 个省份/运营商组合
   - 探测方式: 每节点发送 ${PACKETS} 个裸 TCP SYN 包，无内核重传
   - 并发数量: ${PARALLEL}
   - 目标端口: 80/tcp
@@ -299,7 +299,7 @@ show_provider_summary() {
 }
 
 print_header() {
-  echo -e "${BOLD}${CYAN}TCP 重传检测--最贴近你上网的综合体验${NC}"
+  echo -e "${BOLD}${CYAN}TcpQuality TCP 重传检测--最贴近你上网的综合体验${NC}"
   echo -e "${DIM}特价VPS补货TG频道：ibsgss | 感谢 Zstatic CDN 节点${NC}"
   echo -e "${DIM}------------------------------------------------------------${NC}"
 }

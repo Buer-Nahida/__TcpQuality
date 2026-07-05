@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Zstatic CDN 节点 TCP 丢包探测脚本
-# 用法: bash <(curl -sL https://your-server/nping_tui.sh)
+# 用法: bash <(curl -sL https://raw.githubusercontent.com/zhangzjjjjjj/nping-cdn-test/main/nping_tui.sh)
 #
 # 每节点发送 10 个裸 TCP SYN 包，无内核重传
 # TUI 风格实时展示省份/运营商丢包率
@@ -144,6 +144,56 @@ TOTAL=${#NODES[@]}
 PARALLEL=15
 RESULT_DIR=$(mktemp -d)
 trap "rm -rf $RESULT_DIR" EXIT
+
+# ===================== 参数与帮助 =====================
+show_help() {
+  cat <<EOF
+Zstatic CDN 节点 TCP 丢包探测脚本
+
+用法:
+  bash <(curl -sL https://raw.githubusercontent.com/zhangzjjjjjj/nping-cdn-test/main/nping_tui.sh) [选项]
+
+选项:
+  -h, --help        显示帮助信息并退出
+
+默认行为:
+  - 节点范围: 全国 Zstatic CDN IPv4 节点，共 ${TOTAL} 个省份/运营商组合
+  - 探测方式: 每节点发送 ${PACKETS} 个裸 TCP SYN 包，无内核重传
+  - 并发数量: ${PARALLEL}
+  - 目标端口: 80/tcp
+  - 结果展示: 统计摘要、三网概览、详细结果表
+  - CSV 输出: /tmp/zstatic_nping_YYYYmmdd_HHMMSS.csv
+
+依赖:
+  - nping: 随 nmap 安装
+  - dig: 用于解析节点域名
+  - awk/sed/grep: 用于结果解析和展示
+
+安装提示:
+  - Debian/Ubuntu: sudo apt-get install -y nmap dnsutils
+  - RHEL/Fedora:   sudo dnf install -y nmap bind-utils
+  - macOS:         brew install nmap bind
+
+说明:
+  发送裸 TCP SYN 包通常需要 root/sudo 权限；如果 nping 权限不足，请使用 sudo 运行。
+EOF
+}
+
+parse_args() {
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -h|--help)
+        show_help
+        exit 0
+        ;;
+      *)
+        echo -e "${RED}[X] 不支持的参数: $1${NC}" >&2
+        echo "使用 -h 或 --help 查看帮助。" >&2
+        exit 1
+        ;;
+    esac
+  done
+}
 
 # ===================== 工具函数 =====================
 loss_color() {
@@ -385,4 +435,5 @@ main() {
   rm -f "$sorted_file"
 }
 
+parse_args "$@"
 main

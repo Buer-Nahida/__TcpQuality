@@ -3,7 +3,7 @@
 # TcpQuality 节点 TCP 丢包探测脚本
 # 用法: bash <(curl -sL https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh)
 #
-# 每节点发送 10 个裸 TCP SYN 包，无内核重传
+# 每节点发送 60 个裸 TCP SYN 包，无内核重传
 # TUI 风格实时展示省份/运营商丢包率
 #
 
@@ -139,9 +139,9 @@ NODES=(
   "重庆 电信 cq-ct-v4.ip.zstaticcdn.com"
 )
 
-PACKETS=10
+PACKETS=60
 TOTAL=${#NODES[@]}
-PARALLEL=15
+PARALLEL=31
 RESULT_DIR=$(mktemp -d)
 trap "rm -rf $RESULT_DIR" EXIT
 

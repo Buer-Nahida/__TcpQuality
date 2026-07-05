@@ -278,9 +278,8 @@ show_provider_summary() {
 }
 
 print_header() {
-  local suffix="$1"
-  echo -e "${BOLD}${CYAN}Zstatic CDN 节点 TCP 丢包探测${suffix}${NC}"
-  echo -e "${DIM}协议: 裸 TCP SYN (nping) · 无重传${NC}"
+  echo -e "${BOLD}${CYAN}ibsgss TCP 重传检测${NC}"
+  echo -e "${DIM}特价VPS补货TG频道：ibsgss | 感谢 Zstatic CDN 节点${NC}"
   echo -e "${DIM}------------------------------------------------------------${NC}"
 }
 
@@ -318,7 +317,7 @@ export RESULT_DIR PACKETS
 # ===================== 主流程 =====================
 main() {
   clear
-  print_header ""
+  print_header
   echo -e "${DIM}  节点: $TOTAL  每节点发包: $PACKETS  并行: $PARALLEL  端口: 80/tcp${NC}"
   echo ""
 
@@ -365,8 +364,7 @@ main() {
 
   # ---- TUI 结果展示 ----
   clear
-  print_header " · 结果"
-  echo -e "${DIM}  nping 裸 SYN  ·  每节点 ${PACKETS} 包  ·  端口 80${NC}"
+  print_header
   echo ""
 
   # 用 awk 做统计（避免 bash 浮点/空值问题）

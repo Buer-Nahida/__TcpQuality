@@ -370,31 +370,47 @@ print_header() {
   echo -e "${DIM}------------------------------------------------------------${NC}"
 }
 
-# 返回“出口网卡|源IPv6”，用于确认目标具备有效公网 IPv6 路由。
+# 返回“出口网卡|源IPv6|源MAC|下一跳MAC”。
 get_ipv6_route() {
-  local target="$1" route_info iface source_ip
+  local target="$1" route_info iface source_ip next_hop source_mac dest_mac
 
   if command -v ip &>/dev/null; then
     route_info=$(ip -6 route get "$target" 2>/dev/null | head -1)
     iface=$(printf "%s\n" "$route_info" | awk '{for (i=1; i<=NF; i++) if ($i=="dev") {print $(i+1); exit}}')
     source_ip=$(printf "%s\n" "$route_info" | awk '{for (i=1; i<=NF; i++) if ($i=="src") {print $(i+1); exit}}')
+    next_hop=$(printf "%s\n" "$route_info" | awk '{for (i=1; i<=NF; i++) if ($i=="via") {print $(i+1); exit}}')
     if [ -n "$iface" ] && [ -z "$source_ip" ]; then
       source_ip=$(ip -6 addr show dev "$iface" scope global 2>/dev/null | awk '/inet6 / {sub(/\/.*/, "", $2); print $2; exit}')
+    fi
+    next_hop=${next_hop:-$target}
+    source_mac=$(ip link show dev "$iface" 2>/dev/null | awk '/link\/ether/ {print $2; exit}')
+    dest_mac=$(ip -6 neigh show "$next_hop" dev "$iface" 2>/dev/null | awk '/lladdr/ {for (i=1; i<=NF; i++) if ($i=="lladdr") {print $(i+1); exit}}')
+    if [ -z "$dest_mac" ] && command -v ping &>/dev/null; then
+      ping -6 -c 1 -W 1 -I "$iface" "$next_hop" >/dev/null 2>&1 || true
+      dest_mac=$(ip -6 neigh show "$next_hop" dev "$iface" 2>/dev/null | awk '/lladdr/ {for (i=1; i<=NF; i++) if ($i=="lladdr") {print $(i+1); exit}}')
     fi
   elif command -v route &>/dev/null && command -v ifconfig &>/dev/null; then
     route_info=$(route -n get -inet6 "$target" 2>/dev/null)
     iface=$(printf "%s\n" "$route_info" | awk '/interface:/ {print $2; exit}')
     source_ip=$(printf "%s\n" "$route_info" | awk '/source:/ {print $2; exit}')
+    next_hop=$(printf "%s\n" "$route_info" | awk '/gateway:/ {print $2; exit}')
     if [ -n "$iface" ] && [ -z "$source_ip" ]; then
       source_ip=$(ifconfig "$iface" 2>/dev/null | awk '/inet6 / && $2 !~ /^fe80:/ && $2 != "::1" {sub(/%.*/, "", $2); print $2; exit}')
+    fi
+    next_hop=${next_hop%%\%*}
+    source_mac=$(ifconfig "$iface" 2>/dev/null | awk '/ether / {print $2; exit}')
+    if command -v ndp &>/dev/null; then
+      dest_mac=$(ndp -an 2>/dev/null | awk -v gw="$next_hop" '{addr=$1; sub(/%.*/, "", addr); if (addr==gw) {print $2; exit}}')
     fi
   fi
 
   source_ip=${source_ip%%\%*}
   case "$source_ip" in
     [23]*:*)
-      if [ -n "$iface" ]; then
-        printf "%s|%s\n" "$iface" "$source_ip"
+      if [ -n "$iface" ] &&
+         [[ "$source_mac" =~ ^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$ ]] &&
+         [[ "$dest_mac" =~ ^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$ ]]; then
+        printf "%s|%s|%s|%s\n" "$iface" "$source_ip" "$source_mac" "$dest_mac"
         return 0
       fi
       ;;
@@ -429,16 +445,15 @@ test_one() {
     return
   fi
 
-  local raw nping_rc iface route_data
+  local raw nping_rc iface source_ip source_mac dest_mac route_data
   local -a nping_args=(--tcp -p 80 --flags syn -c "$PACKETS" --delay 1s "$ip")
   if [ "$family" = "6" ]; then
     if ! route_data=$(get_ipv6_route "$ip"); then
       echo "FAIL|$prov|$isp|$host|$ip|0|0|100.00|IPV6_ROUTE_ERROR" > "$outfile"
       return
     fi
-    IFS='|' read -r iface _ <<< "$route_data"
-    # IPv6 模式传入 -S 会要求同时指定二层 MAC；让内核按路由选择源地址。
-    nping_args=(-6 -e "$iface" "${nping_args[@]}")
+    IFS='|' read -r iface source_ip source_mac dest_mac <<< "$route_data"
+    nping_args=(-6 -e "$iface" -S "$source_ip" --source-mac "$source_mac" --dest-mac "$dest_mac" "${nping_args[@]}")
   fi
   if raw=$(nping "${nping_args[@]}" 2>&1); then
     nping_rc=0

@@ -364,9 +364,20 @@ show_family_results() {
   show_provider_summary "$file"
 }
 
+terminal_link() {
+  local text="$1" url="$2"
+  if [ -t 1 ] && [ "${TERM:-dumb}" != "dumb" ]; then
+    printf '\033]8;;%s\007%s\033]8;;\007' "$url" "$text"
+  else
+    printf "%s" "$text"
+  fi
+}
+
 print_header() {
   echo -e "${BOLD}${CYAN}TcpQuality TCP 重传检测--最贴近你上网的综合体验${NC}"
-  echo -e "${DIM}特价VPS补货TG频道：ibsgss | 感谢 Zstatic CDN 节点${NC}"
+  printf "%b特价VPS补货TG频道：" "$DIM"
+  terminal_link "ibsgss" "https://t.me/ibsgss"
+  printf " | 感谢 Zstatic CDN 节点%b\n" "$NC"
   echo -e "${DIM}------------------------------------------------------------${NC}"
 }
 

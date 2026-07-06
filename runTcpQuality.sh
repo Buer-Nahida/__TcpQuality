@@ -184,7 +184,8 @@ NODES=(
 )
 
 PACKETS=60
-TOTAL=${#NODES[@]}
+NODE_TOTAL=${#NODES[@]}
+TOTAL=$((NODE_TOTAL * 2))
 PARALLEL=31
 RESULT_DIR=$(mktemp -d)
 trap "rm -rf $RESULT_DIR" EXIT
@@ -206,7 +207,7 @@ TcpQuality 节点 TCP 丢包探测脚本
   bash <(curl -sL https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh) -c 100
 
 默认行为:
-  - 节点范围: 全国 TcpQuality IPv4 节点，共 ${TOTAL} 个省份/运营商组合
+  - 节点范围: 全国 TcpQuality IPv4/IPv6 节点，各 ${NODE_TOTAL} 个省份/运营商组合
   - 探测方式: 每节点发送 ${PACKETS} 个裸 TCP SYN 包，无内核重传
   - 并发数量: ${PARALLEL}
   - 目标端口: 80/tcp
@@ -345,6 +346,24 @@ show_provider_summary() {
   }' "$file"
 }
 
+show_family_results() {
+  local family="$1" file="$2"
+  awk -F'|' -v family="$family" '
+  BEGIN { z=0; y=0; h=0; }
+  $1 == "OK" {
+    v = int($8 + 0)
+    if      (v == 0)  z++
+    else if (v <= 20) y++
+    else              h++
+  }
+  $1 != "OK" { h++ }
+  END {
+    printf "  \033[1m\033[0;36m%s 统计摘要\033[0m  ", family
+    printf "\033[0;32m零丢包:%3d\033[0m    \033[0;33m1-20%%:%3d\033[0m    \033[0;31m>20%%:%3d\033[0m\n\n", z, y, h
+  }' "$file"
+  show_provider_summary "$file"
+}
+
 print_header() {
   echo -e "${BOLD}${CYAN}TcpQuality TCP 重传检测--最贴近你上网的综合体验${NC}"
   echo -e "${DIM}特价VPS补货TG频道：ibsgss | 感谢 Zstatic CDN 节点${NC}"
@@ -353,18 +372,26 @@ print_header() {
 
 # ===================== 单节点测试 =====================
 test_one() {
-  local prov="$1" isp="$2" host="$3" idx="$4"
-  local outfile="${RESULT_DIR}/${idx}"
+  local family="$1" prov="$2" isp="$3" host="$4" idx="$5"
+  local outfile="${RESULT_DIR}/${family}_${idx}"
 
   local ip
-  ip=$(dig +short "$host" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+  if [ "$family" = "6" ]; then
+    ip=$(dig +short "$host" AAAA 2>/dev/null | grep -E '^[0-9A-Fa-f:]+$' | head -1)
+  else
+    ip=$(dig +short "$host" A 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+  fi
   if [ -z "$ip" ]; then
     echo "FAIL|$prov|$isp|$host|DNS|0|0|100.00|0" > "$outfile"
     return
   fi
 
   local raw nping_rc
-  if raw=$(nping --tcp -p 80 --flags syn -c "$PACKETS" --delay 1s "$ip" 2>&1); then
+  local -a nping_args=(--tcp -p 80 --flags syn -c "$PACKETS" --delay 1s "$ip")
+  if [ "$family" = "6" ]; then
+    nping_args=(-6 "${nping_args[@]}")
+  fi
+  if raw=$(nping "${nping_args[@]}" 2>&1); then
     nping_rc=0
   else
     nping_rc=$?
@@ -397,7 +424,7 @@ export RESULT_DIR PACKETS
 main() {
   clear
   print_header
-  echo -e "${DIM}  节点: $TOTAL  每节点发包: $PACKETS  并行: $PARALLEL  端口: 80/tcp${NC}"
+  echo -e "${DIM}  双栈节点: $TOTAL  每节点发包: $PACKETS  并行: $PARALLEL  端口: 80/tcp${NC}"
   echo ""
 
   check_nping
@@ -408,15 +435,21 @@ main() {
   local idx=0
   echo -e "  ${DIM}正在探测，请稍候...${NC}"
   show_progress
-  for entry in "${NODES[@]}"; do
-    read -r prov isp host <<< "$entry"
-    idx=$((idx + 1))
-    while [ "$(jobs -pr | wc -l | tr -d ' ')" -ge "$PARALLEL" ]; do
+  local family entry prov isp host
+  for family in 4 6; do
+    for entry in "${NODES[@]}"; do
+      read -r prov isp host <<< "$entry"
+      if [ "$family" = "6" ]; then
+        host=${host/-v4./-v6.}
+      fi
+      idx=$((idx + 1))
+      while [ "$(jobs -pr | wc -l | tr -d ' ')" -ge "$PARALLEL" ]; do
+        show_progress
+        sleep 0.2
+      done
+      test_one "$family" "$prov" "$isp" "$host" "$idx" &
       show_progress
-      sleep 0.2
     done
-    test_one "$prov" "$isp" "$host" "$idx" &
-    show_progress
   done
   while [ "$(jobs -pr | wc -l | tr -d ' ')" -gt 0 ]; do
     show_progress
@@ -431,17 +464,21 @@ main() {
   report_time=$(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M:%S CST（北京时间）')
   local CSV="/tmp/zstatic_nping_$(date +%Y%m%d_%H%M%S).csv"
   printf '\xEF\xBB\xBF' > "$CSV"
-  echo "省份,运营商,域名,IP,状态,发送,收到,丢包率(%),平均延迟ms" >> "$CSV"
+  echo "IP版本,省份,运营商,域名,IP,状态,发送,收到,丢包率(%),平均延迟ms" >> "$CSV"
 
-  local sorted_file
-  sorted_file=$(mktemp)
-  for i in $(seq 1 $TOTAL); do
-    local f="${RESULT_DIR}/${i}"
-    if [ -f "$f" ]; then
-      IFS='|' read -r status prov isp host ip snd rcv loss lat < "$f"
-      echo "$prov,$isp,$host,$ip,$status,$snd,$rcv,$loss,$lat" >> "$CSV"
-      echo "$status|$prov|$isp|$host|$ip|$snd|$rcv|$loss|$lat" >> "$sorted_file"
-    fi
+  local sorted_v4 sorted_v6 sorted_file f i status ip snd rcv loss lat
+  sorted_v4=$(mktemp)
+  sorted_v6=$(mktemp)
+  for family in 4 6; do
+    if [ "$family" = "4" ]; then sorted_file="$sorted_v4"; else sorted_file="$sorted_v6"; fi
+    for i in $(seq 1 "$TOTAL"); do
+      f="${RESULT_DIR}/${family}_${i}"
+      if [ -f "$f" ]; then
+        IFS='|' read -r status prov isp host ip snd rcv loss lat < "$f"
+        echo "IPv${family},$prov,$isp,$host,$ip,$status,$snd,$rcv,$loss,$lat" >> "$CSV"
+        echo "$status|$prov|$isp|$host|$ip|$snd|$rcv|$loss|$lat" >> "$sorted_file"
+      fi
+    done
   done
 
   # ---- TUI 结果展示 ----
@@ -450,27 +487,13 @@ main() {
   echo -e "  ${DIM}报告时间：${report_time}${NC}"
   echo ""
 
-  # 用 awk 做统计（避免 bash 浮点/空值问题）
-  awk -F'|' '
-  BEGIN { z=0; y=0; h=0; }
-  $1 == "OK" {
-    v = int($8 + 0);
-    if      (v == 0)  z++
-    else if (v <= 20) y++
-    else              h++
-  }
-  END {
-    printf "  \033[1m统计摘要\033[0m\n"
-    printf "  \033[0;32m零丢包:%3d\033[0m    \033[0;33m1-20%%:%3d\033[0m    \033[0;31m>20%%:%3d\033[0m\n", z, y, h
-    printf "\n"
-  }' "$sorted_file"
-
-  show_provider_summary "$sorted_file"
+  show_family_results "IPv4" "$sorted_v4"
+  show_family_results "IPv6" "$sorted_v6"
 
   echo -e "  ${DIM}CSV: $CSV${NC}"
   echo ""
 
-  rm -f "$sorted_file"
+  rm -f "$sorted_v4" "$sorted_v6"
 }
 
 parse_args "$@"

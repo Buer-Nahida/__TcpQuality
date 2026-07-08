@@ -18,9 +18,9 @@ bash <(curl -fsSL https://tcpquality.ibsgss.uk/run)
 
 示例报告：
 
-https://tcpquality.ibsgss.uk/r/SEHqm2mczV
+https://tcpquality.ibsgss.uk/r/H7Wt_AncYw
 
-![TcpQuality 示例报告](https://tcpquality.ibsgss.uk/r/SEHqm2mczV.svg)
+![TcpQuality 示例报告](https://tcpquality.ibsgss.uk/r/H7Wt_AncYw.svg)
 
 ---
 

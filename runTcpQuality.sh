@@ -972,8 +972,11 @@ route_label_from_ip_trace() {
     function infer_asn_from_ip(ip) {
       if (ip ~ /^59\.43\./) return "4809"
       if (ip ~ /^203\.22\.182\./ || ip ~ /^203\.22\.178\./ || ip ~ /^203\.22\.179\./ || ip ~ /^203\.128\.224\./ || ip ~ /^69\.194\./) return "23764"
+      if (ip ~ /^2400:9380:/) return "23764"
       if (ip ~ /^202\.97\./ || ip ~ /^202\.96\./ || ip ~ /^219\.141\./ || ip ~ /^219\.142\./ || ip ~ /^106\.37\./) return "4134"
+      if (ip ~ /^240e:/) return "4134"
       if (ip ~ /^219\.158\./) return "4837"
+      if (ip ~ /^2408:/) return "4837"
       if (ip ~ /^223\.120\./ || ip ~ /^223\.119\./) return "58453"
       if (ip ~ /^221\.183\./ || ip ~ /^111\.24\./ || ip ~ /^111\.13\./) return "9808"
       if (ip ~ /^162\.219\.85\./ || ip ~ /^118\.26\.151\./) return "10099"
@@ -987,7 +990,7 @@ route_label_from_ip_trace() {
       if (asn != "" && index(all_asn, "AS" asn " ") == 0) all_asn = all_asn "AS" asn " "
     }
     function is_ctgnet_ip(ip) {
-      return ip ~ /^203\.22\.182\./ || ip ~ /^203\.22\.178\./ || ip ~ /^203\.22\.179\./ || ip ~ /^203\.128\.224\./ || ip ~ /^69\.194\./
+      return ip ~ /^203\.22\.182\./ || ip ~ /^203\.22\.178\./ || ip ~ /^203\.22\.179\./ || ip ~ /^203\.128\.224\./ || ip ~ /^69\.194\./ || ip ~ /^2400:9380:/
     }
     function is_163_ip(ip) {
       return ip ~ /^202\.97\./ || ip ~ /^202\.96\./ || ip ~ /^219\.141\./ || ip ~ /^219\.142\./ || ip ~ /^106\.37\./
@@ -1016,10 +1019,10 @@ route_label_from_ip_trace() {
         if (has_163_after_cn2) return "CN2GT"
         return "CN2GIA"
       }
-      if (has_ctgnet || has_asn("23764")) return "CTGGIA"
       if (has_asn("4837") || has_asn("4808")) return "4837"
       if (has_asn("4134") || has_asn("4847")) return "163"
       if (has_asn("58453") || has_asn("9808") || has_asn("56040") || has_asn("56041") || has_asn("56042") || has_asn("56044") || has_asn("56045") || has_asn("56046") || has_asn("56047") || has_asn("56048")) return "CMI"
+      if (has_ctgnet || has_asn("23764")) return "CTGGIA"
       if (has_asn("4538")) return "CERNET"
       if (has_asn("7497")) return "CSTNET"
       return "Hidden"

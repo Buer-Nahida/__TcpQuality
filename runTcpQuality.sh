@@ -1529,7 +1529,7 @@ retry_cdn_failures() {
     done
   done
 
-  if [ "$retried" -gt 0 ]; then
+  if [ "$DEBUG_MODE" -eq 1 ] && [ "$retried" -gt 0 ]; then
     echo -e "  ${DIM}备用节点重测: ${retried} 次${NC}"
   fi
 }

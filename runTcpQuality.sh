@@ -229,7 +229,7 @@ NODES=(
   "北京 移动 bj-cm-v4.ip.zstaticcdn.com"
   "北京 电信 bj-ct-v4.ip.zstaticcdn.com"
   "天津 联通 tj-cu-v4.ip.zstaticcdn.com"
-  "天津 移动 tj-cm-v4.ip.zstaticcdn.com"
+  "天津 移动 cn-tj-mobile-tcp.istat.online 443"
   "天津 电信 tj-ct-v4.ip.zstaticcdn.com"
   "上海 联通 sh-cu-v4.ip.zstaticcdn.com"
   "上海 移动 sh-cm-v4.ip.zstaticcdn.com"
@@ -452,9 +452,9 @@ province_filter_text() {
 }
 
 count_cdn_nodes() {
-  local entry prov isp host count=0
+  local entry prov isp host port count=0
   for entry in "${NODES[@]}"; do
-    read -r prov isp host <<< "$entry"
+    read -r prov isp host port <<< "$entry"
     province_selected "$prov" && count=$((count + 1))
   done
   echo "$count"
@@ -1167,11 +1167,11 @@ route_label_from_ip_trace() {
 }
 
 route_trace_one() {
-  local family="$1" protocol="$2" prov="$3" isp="$4" host="$5" idx="$6"
+  local family="$1" protocol="$2" prov="$3" isp="$4" host="$5" idx="$6" port="${7:-80}"
   local outfile="${RESULT_DIR}/route_${idx}" trace_file="${RESULT_DIR}/route_trace_${idx}"
   local probe_arg="-T"
   [ "$protocol" = "udp" ] && probe_arg="-U"
-  local -a args=(-n "-${family}" "$probe_arg" -p 80 -q 3 -w 2 -m 30 "$host" 44)
+  local -a args=(-n "-${family}" "$probe_arg" -p "$port" -q 3 -w 2 -m 30 "$host" 44)
   local output rc target_ip
 
   target_ip=$(resolve_route_target_ip "$family" "$host")
@@ -1283,14 +1283,15 @@ run_route_mode() {
   show_progress
   for protocol in "${protocols[@]}"; do
     for entry in "${NODES[@]}"; do
-      read -r prov isp host <<< "$entry"
+      read -r prov isp host port <<< "$entry"
       province_selected "$prov" || continue
       idx=$((idx + 1))
       while [ "$(jobs -pr | wc -l | tr -d ' ')" -ge "$route_parallel" ]; do
         show_progress
         sleep 0.2
       done
-      route_trace_one "$family" "$protocol" "$prov" "$isp" "$host" "$idx" &
+      port=${port:-80}
+      route_trace_one "$family" "$protocol" "$prov" "$isp" "$host" "$idx" "$port" &
       show_progress
     done
   done
@@ -1362,16 +1363,22 @@ collect_route_labels() {
   check_traceroute
   echo -e "  ${DIM}正在识别 IPv${family} TCP 回程线路，请稍候...${NC}"
   for entry in "${NODES[@]}"; do
-    read -r prov isp host <<< "$entry"
+    read -r prov isp host port <<< "$entry"
     province_selected "$prov" || continue
+    port=${port:-80}
     if [ "$family" = "6" ]; then
-      host=${host/-v4./-v6.}
+      if [[ "$host" == *"-v4."* ]]; then
+        host=${host/-v4./-v6.}
+      else
+        host="$(province_code "$prov")-$(isp_code "$isp")-v6.ip.zstaticcdn.com"
+      fi
+      port=80
     fi
     idx=$((idx + 1))
     while [ "$(jobs -pr | wc -l | tr -d ' ')" -ge "$route_parallel" ]; do
       sleep 0.2
     done
-    route_trace_one "$family" tcp "$prov" "$isp" "$host" "$idx" &
+    route_trace_one "$family" tcp "$prov" "$isp" "$host" "$idx" "$port" &
   done
   wait
 
@@ -1629,17 +1636,23 @@ main() {
     if [ "$ipv6_enabled" -eq 1 ]; then families+=(6); fi
     for family in "${families[@]}"; do
       for entry in "${NODES[@]}"; do
-        read -r prov isp host <<< "$entry"
+        read -r prov isp host port <<< "$entry"
+        port=${port:-80}
         province_selected "$prov" || continue
         if [ "$family" = "6" ]; then
-          host=${host/-v4./-v6.}
+          if [[ "$host" == *"-v4."* ]]; then
+            host=${host/-v4./-v6.}
+          else
+            host="$(province_code "$prov")-$(isp_code "$isp")-v6.ip.zstaticcdn.com"
+          fi
+          port=80
         fi
         idx=$((idx + 1))
         while [ "$(jobs -pr | wc -l | tr -d ' ')" -ge "$PARALLEL" ]; do
           show_progress
           sleep 0.2
         done
-        test_one "cdn${family}" "$family" "$prov" "$isp" "$host" "$idx" &
+        test_one "cdn${family}" "$family" "$prov" "$isp" "$host" "$idx" "" "$port" &
         show_progress
       done
     done

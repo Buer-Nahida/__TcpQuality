@@ -59,8 +59,8 @@ bootstrap_nixos_environment() {
     nixpkgs#traceroute
   )
   if [ "$need_speedtest" -eq 1 ]; then
-    # 单线程测速会按需下载官方 tosutil 二进制。
-    :
+    # tosutil 由脚本按需下载；iptables 用于测速流量的独立计数校验。
+    nix_packages+=(nixpkgs#iptables)
   fi
 
   echo '[i] NixOS：正在进入临时 Nix 环境（不会修改 systemPackages）...'
@@ -4319,7 +4319,7 @@ install_speedtest_dependencies() {
 }
 
 install_tosutil_speedtest() {
-  local existing
+  local existing install_path=/usr/local/bin/tosutil
   if [ -n "$SPEEDTEST_TOSUTIL_BIN" ] && [ -x "$SPEEDTEST_TOSUTIL_BIN" ]; then
     if "$SPEEDTEST_TOSUTIL_BIN" version >/dev/null 2>&1; then
       return 0
@@ -4339,20 +4339,24 @@ install_tosutil_speedtest() {
     fi
   fi
   [ -n "$SPEEDTEST_TOSUTIL_URL" ] || return 1
+  if is_nixos; then
+    # NixOS 通常没有可写的 /usr/local/bin，临时二进制跟随本次结果目录清理。
+    install_path="$RESULT_DIR/tosutil"
+  fi
   show_dependency_install_notice
-  $USE_SUDO curl -fL -o /usr/local/bin/tosutil "$SPEEDTEST_TOSUTIL_URL" >/dev/null 2>&1 || {
+  $USE_SUDO curl -fL -o "$install_path" "$SPEEDTEST_TOSUTIL_URL" >/dev/null 2>&1 || {
     clear_dependency_install_notice
     return 1
   }
-  $USE_SUDO chmod +x /usr/local/bin/tosutil >/dev/null 2>&1 || {
+  $USE_SUDO chmod +x "$install_path" >/dev/null 2>&1 || {
     clear_dependency_install_notice
     return 1
   }
-  if ! /usr/local/bin/tosutil version >/dev/null 2>&1; then
+  if ! "$install_path" version >/dev/null 2>&1; then
     clear_dependency_install_notice
     return 1
   fi
-  SPEEDTEST_TOSUTIL_BIN="/usr/local/bin/tosutil"
+  SPEEDTEST_TOSUTIL_BIN="$install_path"
   clear_dependency_install_notice
   return 0
 }

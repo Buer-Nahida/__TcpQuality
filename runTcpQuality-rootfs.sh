@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Run runTcpQuality.sh inside a temporary Debian or Alpine rootfs.
 # The guest shares the host network namespace so route and raw-socket results
 # remain representative of the VPS. This wrapper never uses proot.
@@ -59,6 +59,7 @@ EOF
 
 die() { echo "[X] $*" >&2; exit 1; }
 need_cmd() { command -v "$1" >/dev/null 2>&1 || die "缺少命令: $1"; }
+BASH_BIN=$(command -v bash) || die "缺少命令: bash"
 
 print_interactive_intro() {
   cat <<'EOF'
@@ -218,7 +219,7 @@ esac
 # constrained VPS containers reject unshare, so fall back to explicit cleanup.
 if [ "${TCPQUALITY_MOUNT_NS:-0}" -eq 0 ] && command -v unshare >/dev/null 2>&1; then
   if unshare -m true >/dev/null 2>&1; then
-    exec env TCPQUALITY_MOUNT_NS=1 unshare -m /bin/bash "$SELF_SCRIPT" "${ORIGINAL_ARGS[@]}"
+    exec env TCPQUALITY_MOUNT_NS=1 unshare -m "$BASH_BIN" "$SELF_SCRIPT" "${ORIGINAL_ARGS[@]}"
   fi
 fi
 if [ "${TCPQUALITY_MOUNT_NS:-0}" -eq 1 ]; then
@@ -278,6 +279,7 @@ need_cmd tar
 need_cmd mount
 need_cmd umount
 need_cmd chroot
+CHROOT_BIN=$(command -v chroot)
 need_cmd curl
 need_cmd awk
 need_cmd env
@@ -471,7 +473,7 @@ download_nexttrace_guest() {
   chmod 0755 "$ROOTFS_DIR/usr/local/bin/nexttrace-tiny"
   rm -f -- "$binary"
   env -i HOME=/root "PATH=$GUEST_PATH" TERM=dumb \
-    chroot "$ROOTFS_DIR" /usr/local/bin/nexttrace-tiny -V >/dev/null 2>&1
+    "$CHROOT_BIN" "$ROOTFS_DIR" /usr/local/bin/nexttrace-tiny -V >/dev/null 2>&1
 }
 
 download_extract() {
@@ -873,13 +875,13 @@ mount_guest() {
 install_guest_deps() {
   if [ "$DISTRO" = debian ]; then
     if [ -r "$ROOTFS_DIR/etc/tcpquality-rootfs-release" ] &&
-       env -i HOME=/root "PATH=$GUEST_PATH" TERM=dumb chroot "$ROOTFS_DIR" /bin/bash -c \
+       env -i HOME=/root "PATH=$GUEST_PATH" TERM=dumb "$CHROOT_BIN" "$ROOTFS_DIR" /bin/bash -c \
          'for cmd in bash curl dig gawk ip iperf3 iptables jq ping nping sed ss tar traceroute; do command -v "$cmd" >/dev/null || exit 1; done'; then
       echo "[√] 预构建 rootfs 依赖已就绪"
       return 0
     fi
     local apt_log="$GUEST_TMP_HOST/debian-rootfs-apt.log"
-    if ! env -i HOME=/root "PATH=$GUEST_PATH" TERM=dumb chroot "$ROOTFS_DIR" /bin/bash -c \
+    if ! env -i HOME=/root "PATH=$GUEST_PATH" TERM=dumb "$CHROOT_BIN" "$ROOTFS_DIR" /bin/bash -c \
       'export DEBIAN_FRONTEND=noninteractive PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; apt-get update -qq && apt-get install -y -qq --no-install-recommends bash ca-certificates coreutils curl dnsutils findutils gawk grep iperf3 iproute2 iptables iputils-ping jq kmod nmap ncurses-bin sed tar traceroute tzdata && rm -rf /var/lib/apt/lists/*' \
       >"$apt_log" 2>&1; then
       echo "[X] Debian rootfs 依赖安装失败" >&2
@@ -892,7 +894,7 @@ install_guest_deps() {
     fi
   else
     local apk_log="$GUEST_TMP_HOST/alpine-rootfs-apk.log"
-    if ! env -i HOME=/root "PATH=$GUEST_PATH" TERM=dumb chroot "$ROOTFS_DIR" /bin/sh -c \
+    if ! env -i HOME=/root "PATH=$GUEST_PATH" TERM=dumb "$CHROOT_BIN" "$ROOTFS_DIR" /bin/sh -c \
       'export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; apk add --no-cache bash bind-tools ca-certificates coreutils curl findutils gawk grep iperf3 iproute2 iptables iputils jq kmod ncurses nmap-nping sed tar traceroute tzdata' \
       >"$apk_log" 2>&1; then
       echo "[X] Alpine rootfs 依赖安装失败" >&2
@@ -921,7 +923,7 @@ prepare_guest_files() {
 
   if [ -x "$ROOTFS_DIR/usr/local/bin/nexttrace-tiny" ] &&
      env -i HOME=/root "PATH=$GUEST_PATH" TERM=dumb \
-       chroot "$ROOTFS_DIR" /usr/local/bin/nexttrace-tiny -V >/dev/null 2>&1; then
+       "$CHROOT_BIN" "$ROOTFS_DIR" /usr/local/bin/nexttrace-tiny -V >/dev/null 2>&1; then
     echo "[√] 预构建 rootfs 已包含 nexttrace-tiny"
     return 0
   fi
@@ -935,7 +937,7 @@ prepare_guest_files() {
     cp -L "$nexttrace_path" "$ROOTFS_DIR/usr/local/bin/nexttrace-tiny"
     chmod 0755 "$ROOTFS_DIR/usr/local/bin/nexttrace-tiny"
     if ! env -i HOME=/root "PATH=$GUEST_PATH" TERM=dumb \
-      chroot "$ROOTFS_DIR" /usr/local/bin/nexttrace-tiny -V >/dev/null 2>&1; then
+      "$CHROOT_BIN" "$ROOTFS_DIR" /usr/local/bin/nexttrace-tiny -V >/dev/null 2>&1; then
       rm -f -- "$ROOTFS_DIR/usr/local/bin/nexttrace-tiny"
       echo "[!] 宿主 nexttrace-tiny/nexttrace 无法在 rootfs 内运行，IPv4大包回程将跳过" >&2
     fi
@@ -985,7 +987,7 @@ for env_name in \
 done
 guest_command=(
   env -i "${guest_env[@]}"
-  chroot "$ROOTFS_DIR" /bin/bash /root/runTcpQuality.sh "$@"
+  "$CHROOT_BIN" "$ROOTFS_DIR" /bin/bash /root/runTcpQuality.sh "$@"
 )
 
 set +e

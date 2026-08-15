@@ -6,14 +6,14 @@
 
 set -Eeuo pipefail
 
-export TCPQUALITY_RAW_BASE="${TCPQUALITY_RAW_BASE:-https://raw.githubusercontent.com/ibsgss/TcpQuality/v1beta}"
-ENTRY_BASE="${TCPQUALITY_ENTRY_BASE:-https://raw.githubusercontent.com/ibsgss/TcpQuality/main}"
+export TCPQUALITY_RAW_BASE="${TCPQUALITY_RAW_BASE:-https://raw.githubusercontent.com/Buer-Nahida/__TcpQuality/v1beta}"
+ENTRY_BASE="${TCPQUALITY_ENTRY_BASE:-https://raw.githubusercontent.com/Buer-Nahida/__TcpQuality/main}"
 
 case "$ENTRY_BASE" in
   http://*|https://*) ;;
   *)
-    echo "[!] TCPQUALITY_ENTRY_BASE 非法，已回退到官方 GitHub 源" >&2
-    ENTRY_BASE="https://raw.githubusercontent.com/ibsgss/TcpQuality/main"
+    echo "[!] TCPQUALITY_ENTRY_BASE 非法，已回退到 fork GitHub 源" >&2
+    ENTRY_BASE="https://raw.githubusercontent.com/Buer-Nahida/__TcpQuality/main"
     ;;
 esac
 

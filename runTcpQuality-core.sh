@@ -613,7 +613,7 @@ show_help() {
 TcpQuality 节点 TCP 丢包探测脚本
 
 用法:
-  bash <(curl -sL https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh) [选项]
+  bash <(curl -fsSL https://raw.githubusercontent.com/Buer-Nahida/__TcpQuality/main/runTcpQuality.sh) [选项]
 
 NixOS:
   脚本会自动通过 nix shell 提供运行依赖，不会写入 environment.systemPackages。
@@ -650,10 +650,10 @@ NixOS:
   --debug 还会保存国际互联目标的候选 IP、HTTP 状态、边缘和缓存信息。
 
 示例:
-  bash <(curl -sL https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh) -c 100
-  bash <(curl -sL https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh) -bj -v4 --cernet
-  bash <(curl -sL https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh) --route --debug
-  bash <(curl -sL https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh) --speedtest
+  bash <(curl -fsSL https://raw.githubusercontent.com/Buer-Nahida/__TcpQuality/main/runTcpQuality.sh) -c 100
+  bash <(curl -fsSL https://raw.githubusercontent.com/Buer-Nahida/__TcpQuality/main/runTcpQuality.sh) -bj -v4 --cernet
+  bash <(curl -fsSL https://raw.githubusercontent.com/Buer-Nahida/__TcpQuality/main/runTcpQuality.sh) --route --debug
+  bash <(curl -fsSL https://raw.githubusercontent.com/Buer-Nahida/__TcpQuality/main/runTcpQuality.sh) --speedtest
 
 依赖:
   - nping: 随 nmap 安装

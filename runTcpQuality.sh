@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 #
-# TcpQuality 默认入口。
-# 旧命令保持不变：
-#   bash <(curl -fsSL https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh)
-#   bash <(curl -fsSL https://tcpquality.ibsgss.uk/run)
+# TcpQuality fork 默认入口。
+# 运行命令：
+#   bash <(curl -fsSL https://raw.githubusercontent.com/Buer-Nahida/__TcpQuality/main/runTcpQuality.sh)
 # fish/zsh 不支持或不稳定时可用：
-#   curl -fsSL https://tcpquality.ibsgss.uk/run | env TERM=xterm bash
+#   curl -fsSL https://raw.githubusercontent.com/Buer-Nahida/__TcpQuality/main/runTcpQuality.sh | env TERM=xterm bash
 #
 # 默认进入临时 Debian rootfs + chroot 后运行 runTcpQuality-core.sh。
 # 使用 --no-rootfs 可直接在宿主环境运行 core，便于调试。
@@ -13,12 +12,12 @@
 
 set -Eeuo pipefail
 
-RAW_BASE="${TCPQUALITY_RAW_BASE:-https://raw.githubusercontent.com/ibsgss/TcpQuality/main}"
+RAW_BASE="${TCPQUALITY_RAW_BASE:-https://raw.githubusercontent.com/Buer-Nahida/__TcpQuality/main}"
 case "$RAW_BASE" in
   http://*|https://*) ;;
   *)
-    echo "[!] TCPQUALITY_RAW_BASE 非法，已回退到官方 GitHub 源" >&2
-    RAW_BASE="https://raw.githubusercontent.com/ibsgss/TcpQuality/main"
+    echo "[!] TCPQUALITY_RAW_BASE 非法，已回退到 fork GitHub 源" >&2
+    RAW_BASE="https://raw.githubusercontent.com/Buer-Nahida/__TcpQuality/main"
     ;;
 esac
 RAW_BASE="${RAW_BASE%/}"

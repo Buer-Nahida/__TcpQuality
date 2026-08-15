@@ -1,31 +1,31 @@
-# TcpQuality
+# TcpQuality (Buer-Nahida fork)
 
 TCP 质量检测脚本，默认检测全国三网运营商节点。[单线程测速排行榜](https://tcpquality.ibsgss.uk/rank)
 
+本 fork 独立维护 NixOS 兼容与后续更新，运行时默认从
+`Buer-Nahida/__TcpQuality` 获取入口、core 和 rootfs runner。
+
 ## 快速运行
 
-国外服务器推荐使用 GitHub Raw：
-
 ```
 # bash / zsh
-bash <(curl -fsSL https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/Buer-Nahida/__TcpQuality/main/runTcpQuality.sh)
 ```
 
 ```
 # fish
-curl -fsSL https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh | env TERM=xterm bash
+curl -fsSL https://raw.githubusercontent.com/Buer-Nahida/__TcpQuality/main/runTcpQuality.sh | env TERM=xterm bash
 ```
 
-国内服务器推荐使用加速入口：
+NixOS 可直接使用相同命令；默认 rootfs 模式不依赖宿主的
+`/bin/bash`，`--no-rootfs` 模式会自动进入临时 `nix shell`。
 
-```bash
-# bash / zsh
-bash <(curl -fsSL https://tcpquality.ibsgss.uk/run)
-```
-```bash
-# fish
-curl -fsSL https://tcpquality.ibsgss.uk/run | env TERM=xterm bash
-```
+## 外部服务
+
+节点下发、报告和排行榜目前仍使用 `tcpquality.ibsgss.uk`。可分别通过
+`GET_NODES_URL`、`TCPQUALITY_REPORT_API` 和 `TCPQUALITY_RANK_SESSION_API`
+切换到自建服务。rootfs 会优先使用本 fork 的 GitHub Release，未发布
+`v1.latest` 时会回退到现有 ibsgss 镜像或 Debian OCI 源。
 
 示例报告：
 
@@ -55,7 +55,9 @@ curl -fsSL https://tcpquality.ibsgss.uk/run | env TERM=xterm bash
 - `--province CODE`：仅检测指定省份，可重复；也支持 `-bj`、`-sh`、`-gd` 等省份简写。
 - `--debug`：保留临时文件并输出调试信息。
 
-## Star History
+## 上游项目 Star History
+
+以下图表保留原 `ibsgss/TcpQuality` 项目的历史数据。
 
 <a href="https://www.star-history.com/?repos=ibsgss%2FTcpQuality&type=date&legend=top-left">
  <picture>
